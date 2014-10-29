@@ -1,7 +1,5 @@
 package forcomp
 
-import common._
-
 object Anagrams {
 
   /** A word is simply a `String`. */
@@ -34,10 +32,10 @@ object Anagrams {
    *  same character, and are represented as a lowercase character in the occurrence list.
    */
   def wordOccurrences(w: Word): Occurrences =
-    w.toLowerCase.groupBy((c) => c).toList.map((x) => (x._1, x._2.length))
+    w.toLowerCase.groupBy(c => c).toList.map(x => (x._1, x._2.length)).sortBy(_._1)
 
   /** Converts a sentence into its character occurrence list. */
-  def sentenceOccurrences(s: Sentence): Occurrences = wordOccurrences(s mkString "")
+  def sentenceOccurrences(s: Sentence): Occurrences = wordOccurrences(s mkString)
 
   /** The `dictionaryByOccurrences` is a `Map` from different occurrences to a sequence of all
    *  the words that have that occurrence count.
@@ -71,20 +69,31 @@ object Anagrams {
    *
    *    List(
    *      List(),
-   *      List(('a', 1)),
-   *      List(('a', 2)),
-   *      List(('b', 1)),
-   *      List(('a', 1), ('b', 1)),
-   *      List(('a', 2), ('b', 1)),
-   *      List(('b', 2)),
-   *      List(('a', 1), ('b', 2)),
-   *      List(('a', 2), ('b', 2))
+    *      List(('a', 2), ('b', 2))
+    *      List(('a', 2), ('b', 1)),
+    *      List(('a', 2)),
+    *
+    *      List(('a', 1), ('b', 2)),
+    *      List(('a', 1), ('b', 1)),
+    *      List(('a', 1)),
+    *
+    *
+    *      List(('b', 1)),
+    *      List(('b', 2)),
    *    )
    *
    *  Note that the order of the occurrence list subsets does not matter -- the subsets
    *  in the example above could have been displayed in some other order.
    */
-  def combinations(occurrences: Occurrences): List[Occurrences] = ???
+  def combinations(occurrences: Occurrences): List[Occurrences] = occurrences match {
+    case Nil => List(List())
+    case head :: tail =>
+      val combs = combinations(tail)
+      combs ::: (for {
+        c <- combs
+        i <- 1 to head._2
+      } yield (head._1, i) :: c)
+    }
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
    * 
@@ -96,7 +105,13 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences = ???
+  def subtract(x: Occurrences, y: Occurrences): Occurrences =  {
+    val minor: Map[Char, Int] = y.toMap
+    val tuples = for {
+      maj <- x
+    } yield (maj._1, maj._2 - minor.getOrElse(maj._1, 0))
+    tuples.filter(_._2 > 0)
+  }
 
   /** Returns a list of all anagram sentences of the given sentence.
    *  
