@@ -93,7 +93,7 @@ object Anagrams {
         c <- combs
         i <- 1 to head._2
       } yield (head._1, i) :: c)
-    }
+  }
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
    * 
@@ -105,13 +105,29 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences =  {
+  def subtract(x: Occurrences, y: Occurrences): Occurrences = subtractNoFilter(x,y).filter(_._2 > 0)
+
+  def subtractNoFilter(x: Occurrences, y: Occurrences): Occurrences =  {
     val minor: Map[Char, Int] = y.toMap
-    val tuples = for {
+    for {
       maj <- x
     } yield (maj._1, maj._2 - minor.getOrElse(maj._1, 0))
-    tuples.filter(_._2 > 0)
   }
+
+
+
+//  def diff(x: Occurrences, y: Occurrences): Occurrences =  {
+//    val minor: Map[Char, Int] = y.toMap
+//    val major: Map[Char, Int] = y.toMap
+//    val xMinusY: List[(Char, Int)] = for {
+//      maj <- x
+//    } yield (maj._1, maj._2 - minor.getOrElse(maj._1, 0))
+//
+//    for {
+//      min <- y
+//      if ()
+//    } yield (maj._1, maj._2 - minor.getOrElse(maj._1, 0))
+//  }
 
   /** Returns a list of all anagram sentences of the given sentence.
    *  
@@ -153,6 +169,51 @@ object Anagrams {
    *
    *  Note: There is only one anagram of an empty sentence.
    */
-  def sentenceAnagrams(sentence: Sentence): List[Sentence] = ???
+  def sentenceAnagrams(sentence: Sentence): List[Sentence] = sentence match {
+    case Nil => List(List())
+    case sentence:Sentence =>
+    val sentenceOccurences: Occurrences = sentenceOccurrences(sentence)
+    val matchedWords = dictionaryByOccurrences.toList
+      .filter (x => !subtractNoFilter(sentenceOccurences, x._1).exists(_._2 < 0))
+
+
+//
+//
+//      def occurencesInSentence(sentence: Occurrences, acc: List[Occurrences]): List[Occurrences] = {
+//
+//        for {
+//          i <- dictionaryByOccurrences
+//          if !subtractNoFilter(sentence, i._1).exists(_._2 < 0)
+//          if !acc.contains(i._1)
+//        } yield {
+//          val sub = subtract(sentence, i._1)
+//          if (sub.isEmpty) acc
+//          else occurencesInSentence(sub, i._1 :: acc)
+//        }
+//      }
+//
+//
+//
+
+   matchedWords.foreach(println)
+      Nil
+  }
+
+  def main(args: Array[String]) {
+    //sentenceAnagrams(List("Yes", "man"))
+
+    val lard = List(('a', 1), ('d', 1), ('l', 1), ('r', 1))
+    val r = List(('r', 1))
+    val lad = List(('a', 1), ('d', 1), ('l', 1))
+
+    val by = lard ++ lad
+
+    val map = lard.map(x => x._2)
+//    val by2 = by.groupBy(x => x._1).map(x => (x._1, x._2.reduce(_._2)(+) ))
+    print("ffff")
+  }
+
+
+
 
 }
