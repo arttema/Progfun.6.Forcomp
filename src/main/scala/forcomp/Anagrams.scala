@@ -169,7 +169,6 @@ object Anagrams {
           i <- matchedWords
           if cont(occurAccum, i._1)
           word <- i._2
-          if !res.contains(word)
         } yield {
           if (fullSubtr(occurAccum, i._1).filter(_._2 > 0).isEmpty)
             List(word :: res)
