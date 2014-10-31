@@ -12,10 +12,10 @@ object Anagrams {
    *  how often the character appears.
    *  This list is sorted alphabetically w.r.t. to the character in each pair.
    *  All characters in the occurrence list are lowercase.
-   *  
+   *
    *  Any list of pairs of lowercase characters and their frequency which is not sorted
    *  is **not** an occurrence list.
-   *  
+   *
    *  Note: If the frequency of some character is zero, then that character should not be
    *  in the list.
    */
@@ -27,7 +27,7 @@ object Anagrams {
   val dictionary: List[Word] = loadDictionary
 
   /** Converts the word into its character occurence list.
-   *  
+   *
    *  Note: the uppercase and lowercase version of the character are treated as the
    *  same character, and are represented as a lowercase character in the occurrence list.
    */
@@ -35,12 +35,12 @@ object Anagrams {
     w.toLowerCase.groupBy(c => c).toList.map(x => (x._1, x._2.length)).sortBy(_._1)
 
   /** Converts a sentence into its character occurrence list. */
-  def sentenceOccurrences(s: Sentence): Occurrences = wordOccurrences(s mkString)
+  def sentenceOccurrences(s: Sentence): Occurrences = wordOccurrences(s mkString "")
 
   /** The `dictionaryByOccurrences` is a `Map` from different occurrences to a sequence of all
    *  the words that have that occurrence count.
    *  This map serves as an easy way to obtain all the anagrams of a word given its occurrence list.
-   *  
+   *
    *  For example, the word "eat" has the following character occurrence list:
    *
    *     `List(('a', 1), ('e', 1), ('t', 1))`
@@ -64,7 +64,7 @@ object Anagrams {
    *  This includes the occurrence itself, i.e. `List(('k', 1), ('o', 1))`
    *  is a subset of `List(('k', 1), ('o', 1))`.
    *  It also include the empty subset `List()`.
-   * 
+   *
    *  Example: the subsets of the occurrence list `List(('a', 2), ('b', 2))` are:
    *
    *    List(
@@ -96,7 +96,7 @@ object Anagrams {
   }
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
-   * 
+   *
    *  The precondition is that the occurrence list `y` is a subset of
    *  the occurrence list `x` -- any character appearing in `y` must
    *  appear in `x`, and its frequency in `y` must be smaller or equal
@@ -105,32 +105,16 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences = subtractNoFilter(x,y).filter(_._2 > 0)
+  def subtract(x: Occurrences, y: Occurrences): Occurrences = fullSubtr(x,y).filter(_._2 > 0)
 
-  def subtractNoFilter(x: Occurrences, y: Occurrences): Occurrences =  {
-    val minor: Map[Char, Int] = y.toMap
-    for {
-      maj <- x
-    } yield (maj._1, maj._2 - minor.getOrElse(maj._1, 0))
+  def fullSubtr(x: Occurrences, y: Occurrences): Occurrences = {
+    val yNeg: Occurrences = y map (y => (y._1, y._2 * -1))
+    def sumOccur(occ: Occurrences) = (occ fold (' ', 0))((x,y) => ('x', x._2 + y._2))._2
+    (x ++ yNeg).groupBy(x => x._1).map(x => (x._1, sumOccur(x._2))).toList.sortBy(_._1)
   }
 
-
-
-//  def diff(x: Occurrences, y: Occurrences): Occurrences =  {
-//    val minor: Map[Char, Int] = y.toMap
-//    val major: Map[Char, Int] = y.toMap
-//    val xMinusY: List[(Char, Int)] = for {
-//      maj <- x
-//    } yield (maj._1, maj._2 - minor.getOrElse(maj._1, 0))
-//
-//    for {
-//      min <- y
-//      if ()
-//    } yield (maj._1, maj._2 - minor.getOrElse(maj._1, 0))
-//  }
-
   /** Returns a list of all anagram sentences of the given sentence.
-   *  
+   *
    *  An anagram of a sentence is formed by taking the occurrences of all the characters of
    *  all the words in the sentence, and producing all possible combinations of words with those characters,
    *  such that the words have to be from the dictionary.
@@ -171,49 +155,37 @@ object Anagrams {
    */
   def sentenceAnagrams(sentence: Sentence): List[Sentence] = sentence match {
     case Nil => List(List())
-    case sentence:Sentence =>
-    val sentenceOccurences: Occurrences = sentenceOccurrences(sentence)
-    val matchedWords = dictionaryByOccurrences.toList
-      .filter (x => !subtractNoFilter(sentenceOccurences, x._1).exists(_._2 < 0))
+    case sentence: Sentence =>
+      def cont(x: Occurrences, y: Occurrences): Boolean = !fullSubtr(x, y).exists(_._2 < 0)
 
+      val sentenceOcc = sentenceOccurrences(sentence)
+      val parDictionary = dictionaryByOccurrences.toList.par
+      val matchedWordsParallel = parDictionary.filter(x => cont(sentenceOcc, x._1))
+      val matchedWords = matchedWordsParallel.seq.toList
 
-//
-//
-//      def occurencesInSentence(sentence: Occurrences, acc: List[Occurrences]): List[Occurrences] = {
-//
-//        for {
-//          i <- dictionaryByOccurrences
-//          if !subtractNoFilter(sentence, i._1).exists(_._2 < 0)
-//          if !acc.contains(i._1)
-//        } yield {
-//          val sub = subtract(sentence, i._1)
-//          if (sub.isEmpty) acc
-//          else occurencesInSentence(sub, i._1 :: acc)
-//        }
-//      }
-//
-//
-//
+      def occurencesInSentence(occurAccum: Occurrences, res: List[Word]): List[Sentence] = {
 
-   matchedWords.foreach(println)
-      Nil
+        val sentence1s: List[List[Sentence]] = for {
+          i <- matchedWords
+          if cont(occurAccum, i._1)
+          word <- i._2
+          if !res.contains(word)
+        } yield {
+          if (fullSubtr(occurAccum, i._1).filter(_._2 > 0).isEmpty)
+            List(word :: res)
+          else
+            occurencesInSentence(fullSubtr(occurAccum, i._1), res ++ List(word))
+        }
+        sentence1s.flatten
+      }
+      occurencesInSentence(sentenceOcc,List())
   }
 
-  def main(args: Array[String]) {
-    //sentenceAnagrams(List("Yes", "man"))
-
-    val lard = List(('a', 1), ('d', 1), ('l', 1), ('r', 1))
-    val r = List(('r', 1))
-    val lad = List(('a', 1), ('d', 1), ('l', 1))
-
-    val by = lard ++ lad
-
-    val map = lard.map(x => x._2)
-//    val by2 = by.groupBy(x => x._1).map(x => (x._1, x._2.reduce(_._2)(+) ))
-    print("ffff")
+  def time[A](f: => A) = {
+    val s = System.nanoTime
+    val ret = f
+    println("time: "+(System.nanoTime-s)/1e6+"ms")
+    ret
   }
-
-
-
 
 }
